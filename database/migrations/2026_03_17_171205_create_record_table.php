@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('record', function (Blueprint $table) {
+        Schema::create('records', function (Blueprint $table) {
              $table->id();
 
             $table->foreignId('patient_id')
-                ->constrained('patient')
+                ->constrained('patients')
                 ->cascadeOnDelete();
 
             $table->dateTime('birth_date');
@@ -33,6 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('record');
+        Schema::dropIfExists('records');
     }
 };
