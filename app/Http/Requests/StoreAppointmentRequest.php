@@ -14,7 +14,7 @@ class StoreAppointmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -27,13 +27,13 @@ class StoreAppointmentRequest extends FormRequest
         $validator->after(function ($validator) {
 
             $doctorId = $this->doctor_id;
-            $start = $this->fecha_hora_inicio;
-            $end = $this->fecha_hora_fin;
+            $start = $this->date_time_begin;
+            $end = $this->date_time_end;
 
             $conflict = Appointment::where('doctor_id', $doctorId)
                 ->where(function ($query) use ($start, $end) {
-                    $query->where('fecha_hora_inicio', '<', $end)
-                        ->where('fecha_hora_fin', '>', $start);
+                    $query->where('date_time_begin', '<=', $end)
+                        ->where('date_time_end', '>=', $start);
                 })
                 ->exists();
 
@@ -48,8 +48,8 @@ class StoreAppointmentRequest extends FormRequest
         return [
             'patient_id' => 'required|exists:patients,id',
             'doctor_id' => 'required|exists:users,id',
-            'fecha_hora_inicio' => 'required|date',
-            'fecha_hora_fin' => 'required|date|after:fecha_hora_inicio',
+            'date_time_begin' => 'required|date',
+            'date_time_end' => 'required|date|after:date_time_begin',
         ];
     }
 }
