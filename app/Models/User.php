@@ -30,10 +30,14 @@ class User extends Authenticatable
         ];
     }
 
-    //Relacion con citas (doctor)
     public function appointments()
     {
         return $this->hasMany(Appointment::class, 'doctor_id');
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(DoctorSchedule::class, 'doctor_id');
     }
 
     /**
