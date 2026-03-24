@@ -64,13 +64,13 @@ class AppointmentResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name')
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor'))
                     ->searchable()
                     ->required(),
-                Forms\Components\DateTimePickerField::make('date_time_begin')
+                Forms\Components\DateTimePicker::make('date_time_begin')
                     ->label('Inicio')
                     ->required(),
-                Forms\Components\DateTimePickerField::make('date_time_end')
+                Forms\Components\DateTimePicker::make('date_time_end')
                     ->label('Fin')
                     ->required(),
                 Forms\Components\Select::make('status')
@@ -123,7 +123,7 @@ class AppointmentResource extends Resource
                     ]),
                 Tables\Filters\SelectFilter::make('doctor')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name'),
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor')),
             ])
             ->actions([
                 ViewAction::make(),

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\AppointmentResource\Pages;
 
 use App\Filament\Resources\AppointmentResource;
 use Filament\Infolists;
+use Filament\Schemas;
 use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord;
 
