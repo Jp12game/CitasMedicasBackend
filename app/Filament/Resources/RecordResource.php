@@ -17,6 +17,11 @@ use Filament\Tables\Table;
 
 class RecordResource extends Resource
 {
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'doctor', 'assistant']) ?? false;
+    }
+
     public static function canCreate(): bool
     {
         return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;

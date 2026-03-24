@@ -18,6 +18,11 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AppointmentResource extends Resource
 {
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'doctor', 'assistant']) ?? false;
+    }
+
     public static function canCreate(): bool
     {
         return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
