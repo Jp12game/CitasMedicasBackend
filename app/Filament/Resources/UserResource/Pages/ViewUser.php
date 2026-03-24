@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\UserResource\Pages;
 
 use App\Filament\Resources\UserResource;
+use Filament\Infolists;
 use Filament\Schemas;
 use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord;
@@ -17,15 +18,15 @@ class ViewUser extends ViewRecord
             ->schema([
                 Schemas\Components\Section::make('Información del Usuario')
                     ->schema([
-                        Schemas\Components\TextEntry::make('name')
+                        Infolists\Components\TextEntry::make('name')
                             ->label('Nombre'),
-                        Schemas\Components\TextEntry::make('email')
+                        Infolists\Components\TextEntry::make('email')
                             ->label('Correo'),
-                        Schemas\Components\TextEntry::make('roles.name')
+                        Infolists\Components\TextEntry::make('roles.name')
                             ->label('Roles')
                             ->badge()
                             ->separator(','),
-                        Schemas\Components\TextEntry::make('created_at')
+                        Infolists\Components\TextEntry::make('created_at')
                             ->label('Creado')
                             ->dateTime('d/m/Y H:i'),
                     ])

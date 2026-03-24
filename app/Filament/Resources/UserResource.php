@@ -62,7 +62,7 @@ class UserResource extends Resource
                     ->dehydrateStateUsing(fn ($state) => !empty($state) ? Hash::make($state) : null)
                     ->required(fn (string $context) => $context === 'create')
                     ->maxLength(255),
-                Forms\Components\CheckboxGroup::make('roles')
+                Forms\Components\CheckboxList::make('roles')
                     ->label('Roles')
                     ->relationship('roles', 'name')
                     ->options(\Spatie\Permission\Models\Role::pluck('name', 'id'))

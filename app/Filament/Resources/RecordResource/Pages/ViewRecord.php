@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\RecordResource\Pages;
 
 use App\Filament\Resources\RecordResource;
+use Filament\Infolists;
 use Filament\Schemas;
 use Filament\Schemas\Schema;
 use Filament\Resources\Pages\ViewRecord as ViewRecordPage;
@@ -17,16 +18,16 @@ class ViewRecord extends ViewRecordPage
             ->schema([
                 Schemas\Components\Section::make('Registro Médico')
                     ->schema([
-                        Schemas\Components\TextEntry::make('patient.name')
+                        Infolists\Components\TextEntry::make('patient.name')
                             ->label('Paciente'),
-                        Schemas\Components\TextEntry::make('weight')
+                        Infolists\Components\TextEntry::make('weight')
                             ->label('Peso (kg)'),
-                        Schemas\Components\TextEntry::make('height')
+                        Infolists\Components\TextEntry::make('height')
                             ->label('Altura (cm)'),
-                        Schemas\Components\TextEntry::make('last_checkup_date')
+                        Infolists\Components\TextEntry::make('last_checkup_date')
                             ->label('Última Revisión')
                             ->dateTime('d/m/Y H:i'),
-                        Schemas\Components\TextEntry::make('last_checkup_notes')
+                        Infolists\Components\TextEntry::make('last_checkup_notes')
                             ->label('Notas'),
                     ])
                     ->columns(2),
