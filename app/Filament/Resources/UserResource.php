@@ -13,6 +13,26 @@ use Illuminate\Support\Facades\Hash;
 
 class UserResource extends Resource
 {
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     protected static ?string $model = User::class;
 
     protected static ?string $navigationLabel = 'Usuarios';

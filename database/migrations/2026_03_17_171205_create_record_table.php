@@ -18,12 +18,12 @@ return new class extends Migration
                 ->constrained('patients')
                 ->cascadeOnDelete();
 
-            $table->dateTime('birth_date');
-            $table->decimal('weight', 5, 2); 
-            $table->decimal('height', 4, 2);
+            $table->date('birth_date')->nullable();
+            $table->decimal('weight', 5, 2)->nullable();
+            $table->decimal('height', 5, 2)->nullable();
 
             $table->text('last_checkup_notes')->nullable();
-            $table->dateTime('last_checkup_date');
+            $table->dateTime('last_checkup_date')->nullable();
             $table->timestamps();
         });
     }

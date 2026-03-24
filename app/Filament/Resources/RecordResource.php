@@ -12,6 +12,21 @@ use Filament\Tables\Table;
 
 class RecordResource extends Resource
 {
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     protected static ?string $model = Record::class;
 
     protected static ?string $navigationLabel = 'Registros Médicos';

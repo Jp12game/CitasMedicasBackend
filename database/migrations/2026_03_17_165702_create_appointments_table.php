@@ -21,6 +21,7 @@ return new class extends Migration
                 ->onDelete('cascade');
             $table->dateTime('date_time_begin');
             $table->dateTime('date_time_end');
+            $table->enum('status', ['scheduled', 'completed', 'cancelled'])->default('scheduled');
             $table->timestamps();
         });
     }

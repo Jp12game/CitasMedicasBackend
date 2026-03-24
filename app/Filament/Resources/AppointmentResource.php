@@ -9,9 +9,36 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AppointmentResource extends Resource
 {
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (auth()->user()?->hasRole('doctor')) {
+            $query->where('doctor_id', auth()->id());
+        }
+
+        return $query;
+    }
+
     protected static ?string $model = Appointment::class;
 
     protected static ?string $navigationLabel = 'Citas';

@@ -13,6 +13,21 @@ use Filament\Tables\Table;
 
 class PatientResource extends Resource
 {
+    public static function canCreate(): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return auth()->user()?->hasRole('admin') ?? false;
+    }
+
     protected static ?string $model = Patient::class;
 
     protected static ?string $navigationLabel = 'Pacientes';
