@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use App\Filament\Widgets\AppointmentCalendarWidget;
 use App\Filament\Widgets\AppointmentsChartWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\AccountWidget;
@@ -42,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
                 AccountWidget::class,
                 StatsOverviewWidget::class,
                 AppointmentsChartWidget::class,
+                AppointmentCalendarWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
