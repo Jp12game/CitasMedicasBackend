@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use App\Filament\Widgets\AppointmentsChartWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -40,6 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 StatsOverviewWidget::class,
+                AppointmentsChartWidget::class,
             ])
             ->middleware([
                 EncryptCookies::class,
