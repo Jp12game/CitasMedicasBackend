@@ -26,6 +26,39 @@ class RoleSeeder extends Seeder
         );
         $adminUser->assignRole($admin);
 
+        // Default test admin
+        $testAdmin = User::firstOrCreate(
+            ['email' => 'test@test.com'],
+            [
+                'name'              => 'Test Admin',
+                'password'          => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $testAdmin->assignRole($admin);
+
+        // Default test doctor
+        $testDoctor = User::firstOrCreate(
+            ['email' => 'doctor@test.com'],
+            [
+                'name'              => 'Test Doctor',
+                'password'          => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $testDoctor->assignRole($doctor);
+
+        // Default test assistant
+        $testAssistant = User::firstOrCreate(
+            ['email' => 'assistant@test.com'],
+            [
+                'name'              => 'Test Assistant',
+                'password'          => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $testAssistant->assignRole($assistant);
+
         // Doctor users
         $doctorNames = [
             ['name' => 'Dr. Carlos López',    'email' => 'carlos.lopez@clinica.com'],
