@@ -19,17 +19,17 @@ class RecordResource extends Resource
 {
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'doctor', 'assistant']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico', 'paciente']) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico']) ?? false;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico']) ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool

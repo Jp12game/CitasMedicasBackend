@@ -9,22 +9,22 @@ class RecordPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'doctor', 'assistant']);
+        return $user->hasAnyRole(['admin', 'medico', 'paciente']);
     }
 
     public function view(User $user, Record $record): bool
     {
-        return $user->hasAnyRole(['admin', 'doctor', 'assistant']);
+        return $user->hasAnyRole(['admin', 'medico', 'paciente']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'doctor']);
+        return $user->hasAnyRole(['admin', 'medico']);
     }
 
     public function update(User $user, Record $record): bool
     {
-        return $user->hasAnyRole(['admin', 'doctor']);
+        return $user->hasAnyRole(['admin', 'medico']);
     }
 
     public function delete(User $user, Record $record): bool

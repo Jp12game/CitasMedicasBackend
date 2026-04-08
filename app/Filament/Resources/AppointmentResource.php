@@ -20,17 +20,17 @@ class AppointmentResource extends Resource
 {
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'doctor', 'assistant']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico', 'paciente']) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'paciente']) ?? false;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'assistant']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'paciente']) ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
@@ -42,7 +42,7 @@ class AppointmentResource extends Resource
     {
         $query = parent::getEloquentQuery();
 
-        if (auth()->user()?->hasRole('doctor')) {
+        if (auth()->user()?->hasRole('medico')) {
             $query->where('doctor_id', auth()->id());
         }
 
@@ -64,7 +64,7 @@ class AppointmentResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor'))
+                    ->relationship('medico', 'name', fn ($query) => $query->role('medico'))
                     ->searchable()
                     ->required(),
                 Forms\Components\DateTimePicker::make('date_time_begin')
@@ -121,9 +121,9 @@ class AppointmentResource extends Resource
                         'completed' => 'Completada',
                         'cancelled' => 'Cancelada',
                     ]),
-                Tables\Filters\SelectFilter::make('doctor')
+                Tables\Filters\SelectFilter::make('medico')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor')),
+                    ->relationship('medico', 'name', fn ($query) => $query->role('medico')),
             ])
             ->actions([
                 ViewAction::make(),

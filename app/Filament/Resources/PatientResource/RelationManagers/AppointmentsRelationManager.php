@@ -31,7 +31,7 @@ class AppointmentsRelationManager extends RelationManager
                     ->required(),
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor'))
+                    ->relationship('medico', 'name', fn ($query) => $query->role('medico'))
                     ->required(),
                 Forms\Components\Select::make('status')
                     ->label('Estado')
