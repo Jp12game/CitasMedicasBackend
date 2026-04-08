@@ -11,9 +11,9 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         // Create roles
-        $admin     = Role::firstOrCreate(['name' => 'admin']);
-        $doctor    = Role::firstOrCreate(['name' => 'doctor']);
-        $assistant = Role::firstOrCreate(['name' => 'assistant']);
+        $admin    = Role::firstOrCreate(['name' => 'admin']);
+        $doctor   = Role::firstOrCreate(['name' => 'medico']);
+        $paciente = Role::firstOrCreate(['name' => 'paciente']);
 
         // Admin user
         $adminUser = User::firstOrCreate(
@@ -48,16 +48,16 @@ class RoleSeeder extends Seeder
         );
         $testDoctor->assignRole($doctor);
 
-        // Default test assistant
-        $testAssistant = User::firstOrCreate(
-            ['email' => 'assistant@test.com'],
+        // Default test paciente
+        $testPaciente = User::firstOrCreate(
+            ['email' => 'paciente@test.com'],
             [
-                'name'              => 'Test Assistant',
+                'name'              => 'Test Paciente',
                 'password'          => bcrypt('password'),
                 'email_verified_at' => now(),
             ]
         );
-        $testAssistant->assignRole($assistant);
+        $testPaciente->assignRole($paciente);
 
         // Doctor users
         $doctorNames = [
@@ -78,13 +78,13 @@ class RoleSeeder extends Seeder
             $user->assignRole($doctor);
         }
 
-        // Assistant users
-        $assistantNames = [
+        // Paciente users
+        $pacienteNames = [
             ['name' => 'Ana Pérez',     'email' => 'ana.perez@clinica.com'],
             ['name' => 'Luis Ramírez',  'email' => 'luis.ramirez@clinica.com'],
         ];
 
-        foreach ($assistantNames as $data) {
+        foreach ($pacienteNames as $data) {
             $user = User::firstOrCreate(
                 ['email' => $data['email']],
                 [
@@ -93,7 +93,7 @@ class RoleSeeder extends Seeder
                     'email_verified_at' => now(),
                 ]
             );
-            $user->assignRole($assistant);
+            $user->assignRole($paciente);
         }
     }
 }

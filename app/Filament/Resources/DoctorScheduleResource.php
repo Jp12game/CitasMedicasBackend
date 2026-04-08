@@ -20,7 +20,7 @@ class DoctorScheduleResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'doctor']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico']) ?? false;
     }
 
     public static function canCreate(): bool
@@ -44,7 +44,7 @@ class DoctorScheduleResource extends Resource
             ->schema([
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor'))
+                    ->relationship('medico', 'name', fn ($query) => $query->role('medico'))
                     ->searchable()
                     ->required(),
                 Forms\Components\Select::make('day_of_week')
@@ -95,9 +95,9 @@ class DoctorScheduleResource extends Resource
                     ->label('Fin'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('doctor')
+                Tables\Filters\SelectFilter::make('medico')
                     ->label('Doctor')
-                    ->relationship('doctor', 'name', fn ($query) => $query->role('doctor')),
+                    ->relationship('medico', 'name', fn ($query) => $query->role('medico')),
             ])
             ->actions([
                 EditAction::make(),
