@@ -12,7 +12,7 @@ class AppointmentSeeder extends Seeder
     public function run(): void
     {
         $patients = Patient::all();
-        $doctors  = User::role('doctor')->get();
+        $doctors  = User::role('medico')->get();
 
         if ($patients->isEmpty() || $doctors->isEmpty()) {
             return;
