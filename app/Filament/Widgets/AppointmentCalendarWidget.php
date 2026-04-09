@@ -15,10 +15,10 @@ class AppointmentCalendarWidget extends Widget
 
     protected function getViewData(): array
     {
-        $query = Appointment::with(['patient', 'medico'])
+        $query = Appointment::with(['patient', 'doctor'])
             ->where('status', '!=', 'cancelled');
 
-        if (auth()->user()?->hasRole('medico')) {
+        if (auth()->user()?->hasRole('doctor')) {
             $query->where('doctor_id', auth()->id());
         }
 
