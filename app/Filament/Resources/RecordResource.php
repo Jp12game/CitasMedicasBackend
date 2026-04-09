@@ -14,6 +14,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class RecordResource extends Resource
 {
@@ -35,6 +36,17 @@ class RecordResource extends Resource
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        if (auth()->user()?->hasRole('paciente')) {
+            $query->whereHas('patient', fn (Builder $patientQuery) => $patientQuery->ownedByUser(auth()->user()));
+        }
+
+        return $query;
     }
 
     protected static ?string $model = Record::class;

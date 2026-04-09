@@ -95,7 +95,11 @@ class DashboardController extends Controller
         $patient = $user->patient ?? new Patient();
 
         $patient->fill($payload);
-        $patient->user()->associate($user);
+
+        if (Patient::usesUserLinkColumn()) {
+            $patient->user()->associate($user);
+        }
+
         $patient->save();
 
         $user->name = $payload['name'];
@@ -236,10 +240,19 @@ class DashboardController extends Controller
 
     private function ensurePatientProfile(User $user): Patient
     {
-        return $user->patient ?? Patient::query()->create([
-            'user_id' => $user->id,
+        if ($user->patient) {
+            return $user->patient;
+        }
+
+        $payload = [
             'name' => $user->name,
             'email' => $user->email,
-        ]);
+        ];
+
+        if (Patient::usesUserLinkColumn()) {
+            $payload['user_id'] = $user->id;
+        }
+
+        return Patient::query()->create($payload);
     }
 }

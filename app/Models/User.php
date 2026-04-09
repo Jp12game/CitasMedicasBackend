@@ -42,7 +42,11 @@ class User extends Authenticatable
 
     public function patient()
     {
-        return $this->hasOne(Patient::class);
+        if (Patient::usesUserLinkColumn()) {
+            return $this->hasOne(Patient::class);
+        }
+
+        return $this->hasOne(Patient::class, 'email', 'email');
     }
 
     public function schedules()

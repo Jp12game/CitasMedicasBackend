@@ -27,7 +27,17 @@ class AppointmentResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'paciente']) ?? false;
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        return $user->hasRole('paciente') && $user->patient !== null;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool

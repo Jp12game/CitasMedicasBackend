@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PatientResource\Pages;
 use App\Filament\Resources\PatientResource\RelationManagers;
 use App\Models\Patient;
+use App\Models\User;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -15,27 +16,33 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PatientResource extends Resource
 {
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'medico', 'paciente']) ?? false;
+        return auth()->user()?->hasAnyRole(['admin', 'medico']) ?? false;
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'paciente']) ?? false;
+        return auth()->user()?->hasRole('admin') ?? false;
     }
 
     public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
     {
-        return auth()->user()?->hasAnyRole(['admin', 'paciente']) ?? false;
+        return auth()->user()?->hasRole('admin') ?? false;
     }
 
     public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
     {
         return auth()->user()?->hasRole('admin') ?? false;
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery();
     }
 
     protected static ?string $model = Patient::class;
@@ -48,10 +55,18 @@ class PatientResource extends Resource
             ->schema([
                 Forms\Components\Select::make('user_id')
                     ->label('Cuenta de acceso')
-                    ->relationship('user', 'email')
+                    ->options(fn () => self::userOptions())
+                    ->default(fn () => self::defaultUserId())
+                    ->visible(fn () => Patient::usesUserLinkColumn())
+                    ->disabled(fn () => self::locksLinkedUser())
+                    ->dehydrated(fn () => Patient::usesUserLinkColumn())
                     ->searchable()
                     ->preload()
-                    ->helperText('Vincula el expediente del paciente con el usuario que iniciará sesión.'),
+                    ->helperText(fn () => ! Patient::usesUserLinkColumn()
+                        ? 'Corre la migración de pacientes para persistir el vínculo por usuario.'
+                        : (self::locksLinkedUser()
+                        ? 'Tu expediente queda vinculado a tu propia cuenta.'
+                        : 'Vincula el expediente del paciente con el usuario que iniciará sesión.')),
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()
@@ -139,5 +154,35 @@ class PatientResource extends Resource
             'view' => Pages\ViewPatient::route('/{record}'),
             'edit' => Pages\EditPatient::route('/{record}/edit'),
         ];
+    }
+
+    protected static function userOptions(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        if ($user->hasRole('paciente')) {
+            return [$user->id => $user->email];
+        }
+
+        return User::query()
+            ->orderBy('email')
+            ->pluck('email', 'id')
+            ->all();
+    }
+
+    protected static function defaultUserId(): ?int
+    {
+        return auth()->user()?->hasRole('paciente')
+            ? auth()->id()
+            : null;
+    }
+
+    protected static function locksLinkedUser(): bool
+    {
+        return auth()->user()?->hasRole('paciente') ?? false;
     }
 }
