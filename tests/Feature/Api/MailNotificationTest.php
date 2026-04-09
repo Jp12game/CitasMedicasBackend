@@ -41,6 +41,8 @@ test('creating an appointment sends the appointment confirmation email', functio
 });
 
 test('successful webhook sends the payment successful email', function () {
+    config()->set('cashier.webhook.secret', 'whsec_test');
+
     Mail::fake();
 
     $patientUser = apiUser('paciente');
@@ -62,14 +64,14 @@ test('successful webhook sends the payment successful email', function () {
         'currency' => 'usd',
     ]);
 
-    postJson('/api/stripe/webhook', [
+    postSignedStripeWebhook($this, [
         'type' => 'payment_intent.succeeded',
         'data' => [
             'object' => [
                 'id' => 'pi_mail_success',
             ],
         ],
-    ])->assertOk();
+    ], config('cashier.webhook.secret'))->assertOk();
 
     Mail::assertSent(PaymentSuccessful::class, function (PaymentSuccessful $mail) use ($patient) {
         return $mail->hasTo($patient->email);
@@ -77,6 +79,8 @@ test('successful webhook sends the payment successful email', function () {
 });
 
 test('failed webhook sends the payment failed email', function () {
+    config()->set('cashier.webhook.secret', 'whsec_test');
+
     Mail::fake();
 
     $patientUser = apiUser('paciente');
@@ -98,14 +102,14 @@ test('failed webhook sends the payment failed email', function () {
         'currency' => 'usd',
     ]);
 
-    postJson('/api/stripe/webhook', [
+    postSignedStripeWebhook($this, [
         'type' => 'payment_intent.payment_failed',
         'data' => [
             'object' => [
                 'id' => 'pi_mail_failed',
             ],
         ],
-    ])->assertOk();
+    ], config('cashier.webhook.secret'))->assertOk();
 
     Mail::assertSent(PaymentFailed::class, function (PaymentFailed $mail) use ($patient) {
         return $mail->hasTo($patient->email);

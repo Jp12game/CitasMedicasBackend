@@ -413,7 +413,7 @@ paths:
                   minLength: 3
                   maxLength: 3
       responses:
-        '201':
+        '200':
           description: Payment intent created
         '403':
           description: Not allowed
@@ -437,3 +437,31 @@ paths:
           description: Payment confirmed
         '403':
           description: Not allowed
+  /payments/simulate:
+    post:
+      summary: Simulate a Stripe test payment for the authenticated patient
+      description: Available for local and testing environments to confirm a PaymentIntent with a Stripe test payment method.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payment_intent_id]
+              properties:
+                payment_intent_id:
+                  type: string
+                payment_method:
+                  type: string
+                  example: pm_card_visa
+      responses:
+        '200':
+          description: Payment simulated and marked as paid
+        '403':
+          description: Not allowed
+        '404':
+          description: Not available in production
+        '422':
+          description: Simulation did not produce a successful payment

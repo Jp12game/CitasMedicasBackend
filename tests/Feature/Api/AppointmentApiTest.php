@@ -103,6 +103,28 @@ test('patients only see their own appointments in the index', function () {
         ->assertJsonPath('data.0.id', $ownAppointment->id);
 });
 
+test('patients see their own appointments through the linked user even if patient email differs', function () {
+    $patientUser = apiUser('paciente', ['email' => 'paciente@login.test']);
+    $doctor = apiUser('medico');
+
+    $patient = \App\Models\Patient::factory()->create([
+        'user_id' => $patientUser->id,
+        'email' => 'ficha.clinica@test.local',
+    ]);
+
+    $appointment = Appointment::factory()->create([
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+    ]);
+
+    Sanctum::actingAs($patientUser);
+
+    getJson('/api/v1/appointments')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $appointment->id);
+});
+
 test('patients can create appointments', function () {
     $patientUser = apiUser('paciente');
     $doctor = apiUser('medico');

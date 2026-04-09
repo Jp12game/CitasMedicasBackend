@@ -28,7 +28,7 @@ class ConfirmPaymentRequest extends FormRequest
             ->where('stripe_payment_intent_id', $this->input('payment_intent_id'))
             ->first();
 
-        return ! $payment || $payment->appointment?->patient?->email === $user->email;
+        return ! $payment || ($payment->appointment?->patient?->belongsToUser($user) ?? false);
     }
 
     /**

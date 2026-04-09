@@ -62,6 +62,6 @@ class AppointmentPolicy
 
     private function ownsPatientAppointment(User $user, Appointment $appointment): bool
     {
-        return $appointment->patient?->email === $user->email;
+        return $appointment->patient?->belongsToUser($user) ?? false;
     }
 }

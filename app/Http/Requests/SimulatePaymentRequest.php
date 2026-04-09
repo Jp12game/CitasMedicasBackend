@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Appointment;
+use App\Models\Payment;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
-class StorePaymentIntentRequest extends FormRequest
+class SimulatePaymentRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -20,13 +20,15 @@ class StorePaymentIntentRequest extends FormRequest
             return true;
         }
 
-        if (! $user->hasRole('paciente') || ! $this->filled('appointment_id')) {
+        if (! $user->hasRole('paciente') || ! $this->filled('payment_intent_id')) {
             return $user->hasRole('paciente');
         }
 
-        $appointment = Appointment::with('patient')->find($this->integer('appointment_id'));
+        $payment = Payment::with('appointment.patient')
+            ->where('stripe_payment_intent_id', $this->input('payment_intent_id'))
+            ->first();
 
-        return ! $appointment || ($appointment->patient?->belongsToUser($user) ?? false);
+        return ! $payment || ($payment->appointment?->patient?->belongsToUser($user) ?? false);
     }
 
     /**
@@ -35,9 +37,8 @@ class StorePaymentIntentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'appointment_id' => 'required|exists:appointments,id',
-            'amount'         => 'required|integer|min:1',
-            'currency'       => 'sometimes|string|size:3',
+            'payment_intent_id' => 'required|string',
+            'payment_method' => 'sometimes|string',
         ];
     }
 }

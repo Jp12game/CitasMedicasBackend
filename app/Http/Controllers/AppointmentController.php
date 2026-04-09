@@ -26,7 +26,7 @@ class AppointmentController extends Controller
         if ($user->hasRole('medico')) {
             $query->where('doctor_id', $user->id);
         } elseif ($user->hasRole('paciente')) {
-            $query->whereHas('patient', fn ($patientQuery) => $patientQuery->where('email', $user->email));
+            $query->whereHas('patient', fn ($patientQuery) => $patientQuery->ownedByUser($user));
         }
 
         if ($request->filled('patient_id')) {
@@ -108,7 +108,7 @@ class AppointmentController extends Controller
         if ($user->hasRole('medico')) {
             $query->where('doctor_id', $user->id);
         } elseif ($user->hasRole('paciente')) {
-            $query->whereHas('patient', fn ($q) => $q->where('email', $user->email));
+            $query->whereHas('patient', fn ($patientQuery) => $patientQuery->ownedByUser($user));
         }
 
         $appointments = $query->paginate(15);

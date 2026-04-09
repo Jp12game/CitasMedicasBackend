@@ -59,8 +59,35 @@ function apiUser(string $role, array $attributes = []): User
 function patientFor(User $user, array $attributes = []): Patient
 {
     return Patient::factory()->create([
+        'user_id' => $user->id,
         'name' => $user->name,
         'email' => $user->email,
         ...$attributes,
     ]);
+}
+
+function stripeSignatureHeader(string $payload, string $secret, ?int $timestamp = null): string
+{
+    $timestamp ??= time();
+    $signature = hash_hmac('sha256', "{$timestamp}.{$payload}", $secret);
+
+    return "t={$timestamp},v1={$signature}";
+}
+
+function postSignedStripeWebhook(TestCase $testCase, array $payload, string $secret)
+{
+    $json = json_encode($payload, JSON_THROW_ON_ERROR);
+
+    return $testCase->call(
+        'POST',
+        '/api/stripe/webhook',
+        [],
+        [],
+        [],
+        [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_STRIPE_SIGNATURE' => stripeSignatureHeader($json, $secret),
+        ],
+        $json,
+    );
 }

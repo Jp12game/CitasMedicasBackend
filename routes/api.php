@@ -30,5 +30,6 @@ Route::prefix('v1')->group(function () {
         // Payments
         Route::post('/payments/create-intent', [PaymentController::class, 'createIntent']);
         Route::post('/payments/confirm', [PaymentController::class, 'confirm']);
+        Route::post('/payments/simulate', [PaymentController::class, 'simulate']);
     });
 });

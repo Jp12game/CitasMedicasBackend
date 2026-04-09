@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Patient;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
@@ -58,6 +59,13 @@ class RoleSeeder extends Seeder
             ]
         );
         $testPaciente->assignRole($paciente);
+        Patient::updateOrCreate(
+            ['user_id' => $testPaciente->id],
+            [
+                'name' => $testPaciente->name,
+                'email' => $testPaciente->email,
+            ]
+        );
 
         // Doctor users
         $doctorNames = [
@@ -94,6 +102,13 @@ class RoleSeeder extends Seeder
                 ]
             );
             $user->assignRole($paciente);
+            Patient::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ]
+            );
         }
     }
 }

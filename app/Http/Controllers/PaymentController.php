@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ConfirmPaymentRequest;
+use App\Http\Requests\SimulatePaymentRequest;
 use App\Http\Requests\StorePaymentIntentRequest;
 use App\Http\Resources\PaymentResource;
 use App\Mail\PaymentFailed;
@@ -13,6 +14,9 @@ use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use RuntimeException;
+use Stripe\Exception\SignatureVerificationException;
+use Stripe\Exception\UnexpectedValueException;
 
 class PaymentController extends Controller
 {
@@ -65,10 +69,55 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function webhook(Request $request): JsonResponse
+    public function simulate(
+        SimulatePaymentRequest $request,
+        PaymentService $paymentService
+    ): JsonResponse
     {
-        $type = (string) $request->input('type');
-        $intentId = (string) $request->input('data.object.id');
+        if (app()->isProduction()) {
+            abort(404);
+        }
+
+        $payment = Payment::with(['patient', 'appointment'])
+            ->where('stripe_payment_intent_id', $request->payment_intent_id)
+            ->firstOrFail();
+
+        $intent = $paymentService->confirmIntent(
+            $request->payment_intent_id,
+            $request->input('payment_method', 'pm_card_visa'),
+        );
+
+        if ($intent->status !== 'succeeded') {
+            return response()->json([
+                'message' => 'La simulación no produjo un pago exitoso.',
+                'payment' => new PaymentResource($payment->fresh()),
+                'simulation' => true,
+                'stripe_status' => $intent->status,
+            ], 422);
+        }
+
+        $payment = $this->markPaymentAsPaid($payment);
+
+        return response()->json([
+            'message' => 'Pago simulado correctamente.',
+            'payment' => new PaymentResource($payment),
+            'simulation' => true,
+        ]);
+    }
+
+    public function webhook(Request $request, PaymentService $paymentService): JsonResponse
+    {
+        try {
+            $event = $paymentService->constructWebhookEvent(
+                $request->getContent(),
+                $request->header('Stripe-Signature'),
+            );
+        } catch (UnexpectedValueException|SignatureVerificationException|RuntimeException) {
+            return response()->json(['message' => 'Webhook de Stripe inválido.'], 400);
+        }
+
+        $type = (string) $event->type;
+        $intentId = (string) data_get($event->data, 'object.id');
 
         if ($intentId === '') {
             return response()->json(['message' => 'Webhook procesado correctamente.']);
@@ -83,24 +132,38 @@ class PaymentController extends Controller
         }
 
         if ($type === 'payment_intent.succeeded') {
-            $payment->update(['status' => 'paid']);
-            $payment->appointment?->update(['status' => 'completed']);
-            $payment = $payment->fresh(['patient', 'appointment']);
-
-            if ($payment->patient?->email) {
-                Mail::to($payment->patient->email)->send(new PaymentSuccessful($payment));
-            }
+            $this->markPaymentAsPaid($payment);
         }
 
         if ($type === 'payment_intent.payment_failed') {
-            $payment->update(['status' => 'failed']);
-            $payment = $payment->fresh(['patient', 'appointment']);
-
-            if ($payment->patient?->email) {
-                Mail::to($payment->patient->email)->send(new PaymentFailed($payment));
-            }
+            $this->markPaymentAsFailed($payment);
         }
 
         return response()->json(['message' => 'Webhook procesado correctamente.']);
+    }
+
+    protected function markPaymentAsPaid(Payment $payment): Payment
+    {
+        $payment->update(['status' => 'paid']);
+        $payment->appointment?->update(['status' => 'completed']);
+        $payment = $payment->fresh(['patient', 'appointment']);
+
+        if ($payment->patient?->email) {
+            Mail::to($payment->patient->email)->send(new PaymentSuccessful($payment));
+        }
+
+        return $payment;
+    }
+
+    protected function markPaymentAsFailed(Payment $payment): Payment
+    {
+        $payment->update(['status' => 'failed']);
+        $payment = $payment->fresh(['patient', 'appointment']);
+
+        if ($payment->patient?->email) {
+            Mail::to($payment->patient->email)->send(new PaymentFailed($payment));
+        }
+
+        return $payment;
     }
 }

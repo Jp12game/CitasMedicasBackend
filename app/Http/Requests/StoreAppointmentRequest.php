@@ -35,10 +35,9 @@ class StoreAppointmentRequest extends FormRequest
             return true;
         }
 
-        return ! Patient::whereKey($this->integer('patient_id'))->exists()
-            || Patient::whereKey($this->integer('patient_id'))
-                ->where('email', $user->email)
-                ->exists();
+        $patient = Patient::find($this->integer('patient_id'));
+
+        return ! $patient || $patient->belongsToUser($user);
     }
 
     /**
