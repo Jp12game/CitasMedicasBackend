@@ -1,18 +1,29 @@
 <?php
 
 use App\Http\Controllers\AppointmentController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AvailabilityController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// Auth (public)
+Route::prefix('v1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
 
-Route::group(['prefix' => 'v1'], function () {
-    Route::get('/appointments', [AppointmentController::class, 'index']);
-    Route::post('/appointments', [AppointmentController::class, 'store']);
-    Route::get('/appointments/{appointment}', [AppointmentController::class, 'show']);
-    Route::put('/appointments/{appointment}', [AppointmentController::class, 'update']);
-    Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy']);
+    // Protected routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::get('/me', [AuthController::class, 'me']);
 
+        // Appointments
+        Route::get('/appointments/history', [AppointmentController::class, 'history']);
+        Route::apiResource('appointments', AppointmentController::class);
+
+        // Availability
+        Route::get('/availability', [AvailabilityController::class, 'index']);
+
+        // Payments
+        Route::post('/payments/create-intent', [PaymentController::class, 'createIntent']);
+        Route::post('/payments/confirm', [PaymentController::class, 'confirm']);
+    });
 });

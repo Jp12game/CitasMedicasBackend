@@ -84,4 +84,25 @@ class AppointmentController extends Controller
             'data' => new AppointmentResource($appointment->fresh(['patient', 'doctor', 'payment'])),
         ]);
     }
+
+    public function history(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $query = Appointment::with(['patient', 'doctor', 'payment'])
+            ->orderBy('date_time_begin', 'desc');
+
+        if ($user->hasRole('medico')) {
+            $query->where('doctor_id', $user->id);
+        } elseif ($user->hasRole('paciente')) {
+            $query->whereHas('patient', fn ($q) => $q->where('email', $user->email));
+        }
+
+        $appointments = $query->paginate(15);
+
+        return response()->json([
+            'message' => 'Historial de citas obtenido correctamente.',
+            'data'    => AppointmentResource::collection($appointments),
+        ]);
+    }
 }
