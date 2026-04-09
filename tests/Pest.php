@@ -1,6 +1,9 @@
 <?php
 
 use Tests\TestCase;
+use App\Models\Patient;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,7 +18,7 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------
@@ -43,7 +46,21 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function apiUser(string $role, array $attributes = []): User
 {
-    // ..
+    Role::findOrCreate($role, 'web');
+
+    $user = User::factory()->create($attributes);
+    $user->assignRole($role);
+
+    return $user;
+}
+
+function patientFor(User $user, array $attributes = []): Patient
+{
+    return Patient::factory()->create([
+        'name' => $user->name,
+        'email' => $user->email,
+        ...$attributes,
+    ]);
 }

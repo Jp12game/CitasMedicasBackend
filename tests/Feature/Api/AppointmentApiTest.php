@@ -2,33 +2,11 @@
 
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
-use App\Models\Patient;
-use App\Models\User;
 use Laravel\Sanctum\Sanctum;
-use Spatie\Permission\Models\Role;
 
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\patchJson;
 use function Pest\Laravel\postJson;
-
-function apiUser(string $role, array $attributes = []): User
-{
-    Role::findOrCreate($role, 'web');
-
-    $user = User::factory()->create($attributes);
-    $user->assignRole($role);
-
-    return $user;
-}
-
-function patientFor(User $user, array $attributes = []): Patient
-{
-    return Patient::factory()->create([
-        'name' => $user->name,
-        'email' => $user->email,
-        ...$attributes,
-    ]);
-}
 
 test('login returns a resource shaped payload', function () {
     $user = apiUser('paciente');
@@ -40,17 +18,35 @@ test('login returns a resource shaped payload', function () {
         ->assertOk()
         ->assertJsonStructure([
             'message',
-            'data' => [
-                'token',
-                'user' => ['id', 'name', 'email', 'roles'],
-            ],
-        ]);
+        'data' => [
+            'token',
+            'user' => ['id', 'name', 'email', 'roles'],
+        ],
+    ]);
+});
+
+test('login fails with invalid credentials', function () {
+    $user = apiUser('paciente');
+
+    postJson('/api/v1/login', [
+        'email' => $user->email,
+        'password' => 'wrong-password',
+    ])->assertUnauthorized()
+        ->assertJsonPath('message', 'Credenciales incorrectas.');
+});
+
+test('unauthenticated users cannot list appointments', function () {
+    getJson('/api/v1/appointments')->assertUnauthorized();
+});
+
+test('unauthenticated users cannot create appointments', function () {
+    postJson('/api/v1/appointments', [])->assertUnauthorized();
 });
 
 test('availability returns cancelled slots as available', function () {
     $requestUser = apiUser('paciente');
     $doctor = apiUser('medico');
-    $patient = Patient::factory()->create();
+    $patient = \App\Models\Patient::factory()->create();
 
     DoctorSchedule::query()->create([
         'doctor_id' => $doctor->id,
@@ -102,6 +98,113 @@ test('patients only see their own appointments in the index', function () {
     Sanctum::actingAs($patientUser);
 
     getJson('/api/v1/appointments')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ownAppointment->id);
+});
+
+test('patients can create appointments', function () {
+    $patientUser = apiUser('paciente');
+    $doctor = apiUser('medico');
+    $patient = patientFor($patientUser);
+
+    DoctorSchedule::query()->create([
+        'doctor_id' => $doctor->id,
+        'day_of_week' => 1,
+        'start_time' => '09:00:00',
+        'end_time' => '12:00:00',
+        'slot_duration' => 30,
+        'is_available' => true,
+    ]);
+
+    Sanctum::actingAs($patientUser);
+
+    postJson('/api/v1/appointments', [
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'date_time_begin' => '2026-04-13 09:00:00',
+        'date_time_end' => '2026-04-13 09:30:00',
+    ])->assertCreated()
+        ->assertJsonPath('data.patient_id', $patient->id)
+        ->assertJsonPath('data.doctor_id', $doctor->id)
+        ->assertJsonPath('data.status', 'scheduled');
+});
+
+test('appointment creation fails with empty fields', function () {
+    $patientUser = apiUser('paciente');
+
+    Sanctum::actingAs($patientUser);
+
+    postJson('/api/v1/appointments', [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'patient_id',
+            'doctor_id',
+            'date_time_begin',
+            'date_time_end',
+        ]);
+});
+
+test('appointment creation fails with invalid date', function () {
+    $patientUser = apiUser('paciente');
+    $doctor = apiUser('medico');
+    $patient = patientFor($patientUser);
+
+    DoctorSchedule::query()->create([
+        'doctor_id' => $doctor->id,
+        'day_of_week' => 1,
+        'start_time' => '09:00:00',
+        'end_time' => '10:00:00',
+        'slot_duration' => 30,
+        'is_available' => true,
+    ]);
+
+    Sanctum::actingAs($patientUser);
+
+    postJson('/api/v1/appointments', [
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'date_time_begin' => '2026-04-13 14:00:00',
+        'date_time_end' => '2026-04-13 14:30:00',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['date_time_begin']);
+});
+
+test('doctors cannot create appointments', function () {
+    $doctor = apiUser('medico');
+    $patient = \App\Models\Patient::factory()->create();
+
+    Sanctum::actingAs($doctor);
+
+    postJson('/api/v1/appointments', [
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'date_time_begin' => '2026-04-13 09:00:00',
+        'date_time_end' => '2026-04-13 09:30:00',
+    ])->assertForbidden();
+});
+
+test('patients can view their appointment history', function () {
+    $patientUser = apiUser('paciente');
+    $otherUser = apiUser('paciente');
+    $doctor = apiUser('medico');
+
+    $patient = patientFor($patientUser);
+    $otherPatient = patientFor($otherUser);
+
+    $ownAppointment = Appointment::factory()->create([
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+    ]);
+
+    Appointment::factory()->create([
+        'patient_id' => $otherPatient->id,
+        'doctor_id' => $doctor->id,
+    ]);
+
+    Sanctum::actingAs($patientUser);
+
+    getJson('/api/v1/appointments/history')
         ->assertOk()
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.id', $ownAppointment->id);

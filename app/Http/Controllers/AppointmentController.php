@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\UpdateAppointmentRequest;
 use App\Http\Resources\AppointmentResource;
+use App\Mail\AppointmentConfirmed;
 use App\Models\Appointment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class AppointmentController extends Controller
 {
@@ -52,7 +54,11 @@ class AppointmentController extends Controller
         $this->authorize('create', Appointment::class);
 
         $appointment = Appointment::create($request->validated());
-        $appointment->load(['patient', 'doctor', 'payment']);
+        $appointment = $appointment->fresh(['patient', 'doctor', 'payment']);
+
+        if ($appointment->patient?->email) {
+            Mail::to($appointment->patient->email)->send(new AppointmentConfirmed($appointment));
+        }
 
         return response()->json([
             'message' => 'Cita creada correctamente.',

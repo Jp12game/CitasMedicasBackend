@@ -6,6 +6,8 @@ use App\Http\Controllers\AvailabilityController;
 use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
+Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
+
 // Auth (public)
 Route::prefix('v1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
