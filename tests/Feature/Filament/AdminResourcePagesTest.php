@@ -67,3 +67,45 @@ test('medico can open a patient edit page with appointment relation manager', fu
         ->get('/admin/patients/'.$patient->id.'/edit')
         ->assertOk();
 });
+
+test('paciente only sees their own profile as appointment option when creating a cita', function () {
+    $patientUser = apiUser('paciente');
+    $otherUser = apiUser('paciente');
+
+    patientFor($patientUser, ['name' => 'Paciente Propio Unico']);
+    patientFor($otherUser, ['name' => 'Paciente Ajeno Prohibido']);
+
+    $this->actingAs($patientUser)
+        ->get('/admin/appointments/create')
+        ->assertOk()
+        ->assertSee('Paciente Propio Unico')
+        ->assertDontSee('Paciente Ajeno Prohibido')
+        ->assertSee('Tu perfil de paciente queda seleccionado automáticamente.');
+});
+
+test('paciente only sees their own citas in the appointments resource page', function () {
+    $patientUser = apiUser('paciente');
+    $otherUser = apiUser('paciente');
+    $doctor = apiUser('medico');
+
+    $patient = patientFor($patientUser, ['name' => 'Paciente Visible']);
+    $otherPatient = patientFor($otherUser, ['name' => 'Paciente Oculto']);
+
+    Appointment::factory()->create([
+        'patient_id' => $patient->id,
+        'doctor_id' => $doctor->id,
+        'status' => 'scheduled',
+    ]);
+
+    Appointment::factory()->create([
+        'patient_id' => $otherPatient->id,
+        'doctor_id' => $doctor->id,
+        'status' => 'scheduled',
+    ]);
+
+    $this->actingAs($patientUser)
+        ->get('/admin/appointments')
+        ->assertOk()
+        ->assertSee('Paciente Visible')
+        ->assertDontSee('Paciente Oculto');
+});
