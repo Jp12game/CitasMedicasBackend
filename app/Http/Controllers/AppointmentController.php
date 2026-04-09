@@ -3,68 +3,85 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreAppointmentRequest;
+use App\Http\Requests\UpdateAppointmentRequest;
+use App\Http\Resources\AppointmentResource;
 use App\Models\Appointment;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AppointmentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): JsonResponse
     {
-        //
+        $user = $request->user();
+
+        $query = Appointment::query()
+            ->with(['patient', 'doctor', 'payment'])
+            ->latest('date_time_begin');
+
+        if ($user->hasRole('medico')) {
+            $query->where('doctor_id', $user->id);
+        }
+        
+        if ($request->filled('patient_id')){
+            $query->where('patient_id', $request->integer('patient_id'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('doctor_id') && ! $user->hasRole('doctor')) {
+            $query->where('doctor_id', $request->integer('doctor_id'));
+        }
+
+        $appointments = $query->paginate(10);
+
+        return response()->json([
+            'message' => 'Listado de citas obtenido correctamente.',
+            'data' => AppointmentResource::collection($appointments),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreAppointmentRequest $request)
+    public function store(StoreAppointmentRequest $request): JsonResponse
     {
         $appointment = Appointment::create($request->validated());
+        $appointment->load(['patient', 'doctor', 'payment']);
+
         return response()->json([
-            'message' => 'Cita creada correctamente',
-            'data' => $appointment
+            'message' => 'Cita creada correctamente.',
+            'data' => new AppointmentResource($appointment),
         ], 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function show(Appointment $appointment): JsonResponse
     {
-        //
+        $appointment->load(['patient', 'doctor', 'payment']);
+
+        return response()->json([
+            'message' => 'Cita obtenida correctamente.',
+            'data' => new AppointmentResource($appointment),
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(UpdateAppointmentRequest $request, Appointment $appointment): JsonResponse
     {
-        //
+        $appointment->update($request->validated());
+        $appointment->load(['patient', 'doctor', 'payment']);
+
+        return response()->json([
+            'message' => 'Cita actualizada correctamente.',
+            'data' => new AppointmentResource($appointment),
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Appointment $appointment): JsonResponse
     {
-        //
-    }
+        $appointment->update(['status' => 'cancelled']);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json([
+            'message' => 'Cita cancelada correctamente.',
+            'data' => new AppointmentResource($appointment->fresh(['patient', 'doctor', 'payment'])),
+        ]);
     }
 }
