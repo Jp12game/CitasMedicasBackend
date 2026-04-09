@@ -64,7 +64,7 @@ class AppointmentResource extends Resource
                     ->required(),
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('medico', 'name', fn ($query) => $query->role('medico'))
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('medico'))
                     ->searchable()
                     ->required(),
                 Forms\Components\DateTimePicker::make('date_time_begin')
@@ -121,9 +121,9 @@ class AppointmentResource extends Resource
                         'completed' => 'Completada',
                         'cancelled' => 'Cancelada',
                     ]),
-                Tables\Filters\SelectFilter::make('medico')
+                Tables\Filters\SelectFilter::make('doctor')
                     ->label('Doctor')
-                    ->relationship('medico', 'name', fn ($query) => $query->role('medico')),
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('medico')),
             ])
             ->actions([
                 ViewAction::make(),

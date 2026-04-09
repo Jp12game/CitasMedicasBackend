@@ -44,7 +44,7 @@ class DoctorScheduleResource extends Resource
             ->schema([
                 Forms\Components\Select::make('doctor_id')
                     ->label('Doctor')
-                    ->relationship('medico', 'name', fn ($query) => $query->role('medico'))
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('medico'))
                     ->searchable()
                     ->required(),
                 Forms\Components\Select::make('day_of_week')
@@ -95,9 +95,9 @@ class DoctorScheduleResource extends Resource
                     ->label('Fin'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('medico')
+                Tables\Filters\SelectFilter::make('doctor')
                     ->label('Doctor')
-                    ->relationship('medico', 'name', fn ($query) => $query->role('medico')),
+                    ->relationship('doctor', 'name', fn ($query) => $query->role('medico')),
             ])
             ->actions([
                 EditAction::make(),

@@ -18,7 +18,7 @@ class AppointmentCalendarWidget extends Widget
         $query = Appointment::with(['patient', 'doctor'])
             ->where('status', '!=', 'cancelled');
 
-        if (auth()->user()?->hasRole('doctor')) {
+        if (auth()->user()?->hasRole('medico')) {
             $query->where('doctor_id', auth()->id());
         }
 
