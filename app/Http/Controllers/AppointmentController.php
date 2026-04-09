@@ -13,6 +13,8 @@ class AppointmentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
+
         $user = $request->user();
 
         $query = Appointment::query()
@@ -21,17 +23,19 @@ class AppointmentController extends Controller
 
         if ($user->hasRole('medico')) {
             $query->where('doctor_id', $user->id);
+        } elseif ($user->hasRole('paciente')) {
+            $query->whereHas('patient', fn ($patientQuery) => $patientQuery->where('email', $user->email));
         }
-        
-        if ($request->filled('patient_id')){
+
+        if ($request->filled('patient_id')) {
             $query->where('patient_id', $request->integer('patient_id'));
         }
 
         if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+            $query->where('status', (string) $request->string('status'));
         }
 
-        if ($request->filled('doctor_id') && ! $user->hasRole('doctor')) {
+        if ($request->filled('doctor_id') && ! $user->hasRole('medico')) {
             $query->where('doctor_id', $request->integer('doctor_id'));
         }
 
@@ -45,6 +49,8 @@ class AppointmentController extends Controller
 
     public function store(StoreAppointmentRequest $request): JsonResponse
     {
+        $this->authorize('create', Appointment::class);
+
         $appointment = Appointment::create($request->validated());
         $appointment->load(['patient', 'doctor', 'payment']);
 
@@ -56,6 +62,8 @@ class AppointmentController extends Controller
 
     public function show(Appointment $appointment): JsonResponse
     {
+        $this->authorize('view', $appointment);
+
         $appointment->load(['patient', 'doctor', 'payment']);
 
         return response()->json([
@@ -66,27 +74,26 @@ class AppointmentController extends Controller
 
     public function update(UpdateAppointmentRequest $request, Appointment $appointment): JsonResponse
     {
-        $appointment->update($request->validated());
-        $appointment->load(['patient', 'doctor', 'payment']);
+        $this->authorize('update', $appointment);
 
-        return response()->json([
-            'message' => 'Cita actualizada correctamente.',
-            'data' => new AppointmentResource($appointment),
-        ]);
+        return $this->rescheduleAppointment(
+            $appointment,
+            $request->validated(),
+            'Cita actualizada correctamente.'
+        );
     }
 
     public function destroy(Appointment $appointment): JsonResponse
     {
-        $appointment->update(['status' => 'cancelled']);
+        $this->authorize('delete', $appointment);
 
-        return response()->json([
-            'message' => 'Cita cancelada correctamente.',
-            'data' => new AppointmentResource($appointment->fresh(['patient', 'doctor', 'payment'])),
-        ]);
+        return $this->cancelAppointment($appointment);
     }
 
     public function history(Request $request): JsonResponse
     {
+        $this->authorize('viewAny', Appointment::class);
+
         $user = $request->user();
 
         $query = Appointment::with(['patient', 'doctor', 'payment'])
@@ -103,6 +110,66 @@ class AppointmentController extends Controller
         return response()->json([
             'message' => 'Historial de citas obtenido correctamente.',
             'data'    => AppointmentResource::collection($appointments),
+        ]);
+    }
+
+    public function confirm(Appointment $appointment): JsonResponse
+    {
+        $this->authorize('confirm', $appointment);
+
+        $appointment->update(['status' => 'completed']);
+        $appointment->load(['patient', 'doctor', 'payment']);
+
+        return response()->json([
+            'message' => 'Cita confirmada correctamente.',
+            'data' => new AppointmentResource($appointment),
+        ]);
+    }
+
+    public function reschedule(UpdateAppointmentRequest $request, Appointment $appointment): JsonResponse
+    {
+        $this->authorize('reschedule', $appointment);
+
+        return $this->rescheduleAppointment(
+            $appointment,
+            $request->validated(),
+            'Cita reagendada correctamente.'
+        );
+    }
+
+    public function cancel(Appointment $appointment): JsonResponse
+    {
+        $this->authorize('cancel', $appointment);
+
+        return $this->cancelAppointment($appointment);
+    }
+
+    private function rescheduleAppointment(
+        Appointment $appointment,
+        array $payload,
+        string $message
+    ): JsonResponse {
+        $appointment->update([
+            'doctor_id' => $payload['doctor_id'],
+            'date_time_begin' => $payload['date_time_begin'],
+            'date_time_end' => $payload['date_time_end'],
+            'status' => 'scheduled',
+        ]);
+        $appointment->load(['patient', 'doctor', 'payment']);
+
+        return response()->json([
+            'message' => $message,
+            'data' => new AppointmentResource($appointment),
+        ]);
+    }
+
+    private function cancelAppointment(Appointment $appointment): JsonResponse
+    {
+        $appointment->update(['status' => 'cancelled']);
+
+        return response()->json([
+            'message' => 'Cita cancelada correctamente.',
+            'data' => new AppointmentResource($appointment->fresh(['patient', 'doctor', 'payment'])),
         ]);
     }
 }

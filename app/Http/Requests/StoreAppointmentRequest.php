@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
+use App\Models\Patient;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,7 +17,28 @@ class StoreAppointmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if (! $user->hasRole('paciente')) {
+            return false;
+        }
+
+        if (! $this->filled('patient_id')) {
+            return true;
+        }
+
+        return ! Patient::whereKey($this->integer('patient_id'))->exists()
+            || Patient::whereKey($this->integer('patient_id'))
+                ->where('email', $user->email)
+                ->exists();
     }
 
     /**
@@ -33,6 +55,7 @@ class StoreAppointmentRequest extends FormRequest
 
             // 1. Check for double-booking conflicts
             $conflict = Appointment::where('doctor_id', $doctorId)
+                ->where('status', '!=', 'cancelled')
                 ->where(function ($query) use ($start, $end) {
                     $query->where('date_time_begin', '<', $end)
                           ->where('date_time_end', '>', $start);
@@ -50,6 +73,7 @@ class StoreAppointmentRequest extends FormRequest
 
             $scheduleExists = DoctorSchedule::where('doctor_id', $doctorId)
                 ->where('day_of_week', $dayOfWeek)
+                ->where('is_available', true)
                 ->where('start_time', '<=', $startTime)
                 ->where('end_time', '>=', $endTime)
                 ->exists();

@@ -17,6 +17,9 @@ Route::prefix('v1')->group(function () {
 
         // Appointments
         Route::get('/appointments/history', [AppointmentController::class, 'history']);
+        Route::patch('/appointments/{appointment}/confirm', [AppointmentController::class, 'confirm']);
+        Route::patch('/appointments/{appointment}/reschedule', [AppointmentController::class, 'reschedule']);
+        Route::patch('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel']);
         Route::apiResource('appointments', AppointmentController::class);
 
         // Availability

@@ -14,7 +14,16 @@ class DoctorSchedule extends Model
         'day_of_week',
         'start_time',
         'end_time',
+        'slot_duration',
+        'is_available',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_available' => 'boolean',
+        ];
+    }
 
     public function doctor()
     {

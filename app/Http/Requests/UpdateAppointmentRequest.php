@@ -16,7 +16,7 @@ class UpdateAppointmentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user() !== null;
     }
 
     /**
@@ -27,12 +27,16 @@ class UpdateAppointmentRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            $doctorId = $this->doctor_id;
-            $start    = Carbon::parse($this->date_time_begin);
-            $end      = Carbon::parse($this->date_time_end);
+            /** @var Appointment|null $appointment */
+            $appointment = $this->route('appointment');
+            $doctorId = $this->doctor_id ?? $appointment?->doctor_id;
+            $start    = Carbon::parse($this->date_time_begin ?? $appointment?->date_time_begin);
+            $end      = Carbon::parse($this->date_time_end ?? $appointment?->date_time_end);
 
             // 1. Check for double-booking conflicts
             $conflict = Appointment::where('doctor_id', $doctorId)
+                ->where('status', '!=', 'cancelled')
+                ->when($appointment, fn ($query) => $query->whereKeyNot($appointment->id))
                 ->where(function ($query) use ($start, $end) {
                     $query->where('date_time_begin', '<', $end)
                           ->where('date_time_end', '>', $start);
@@ -50,6 +54,7 @@ class UpdateAppointmentRequest extends FormRequest
 
             $scheduleExists = DoctorSchedule::where('doctor_id', $doctorId)
                 ->where('day_of_week', $dayOfWeek)
+                ->where('is_available', true)
                 ->where('start_time', '<=', $startTime)
                 ->where('end_time', '>=', $endTime)
                 ->exists();
@@ -66,7 +71,6 @@ class UpdateAppointmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'patient_id' => 'required|exists:patients,id',
             'doctor_id' => 'required|exists:users,id',
             'date_time_begin' => 'required|date',
             'date_time_end' => 'required|date|after:date_time_begin',

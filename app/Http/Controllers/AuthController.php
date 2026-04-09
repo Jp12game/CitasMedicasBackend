@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
+use App\Http\Resources\AuthenticatedSessionResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -23,8 +24,10 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Sesión iniciada correctamente.',
-            'token'   => $token,
-            'user'    => new UserResource($user),
+            'data'    => new AuthenticatedSessionResource([
+                'token' => $token,
+                'user' => $user,
+            ]),
         ]);
     }
 
@@ -38,7 +41,8 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => new UserResource($request->user()),
+            'message' => 'Usuario autenticado obtenido correctamente.',
+            'data' => new UserResource($request->user()),
         ]);
     }
 }

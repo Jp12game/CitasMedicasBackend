@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Appointment;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -9,7 +10,23 @@ class StorePaymentIntentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        if (! $user->hasRole('paciente') || ! $this->filled('appointment_id')) {
+            return $user->hasRole('paciente');
+        }
+
+        $appointment = Appointment::with('patient')->find($this->integer('appointment_id'));
+
+        return ! $appointment || $appointment->patient?->email === $user->email;
     }
 
     /**

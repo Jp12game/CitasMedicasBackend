@@ -2,22 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AvailabilityRequest;
+use App\Http\Resources\AvailabilityResource;
 use App\Models\Appointment;
 use App\Models\DoctorSchedule;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class AvailabilityController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(AvailabilityRequest $request): JsonResponse
     {
-        $request->validate([
-            'doctor' => 'required|exists:users,id',
-            'date'   => 'required|date_format:Y-m-d',
-        ]);
-
         $doctorId = (int) $request->input('doctor');
         $date     = Carbon::parse($request->input('date'));
         $dayOfWeek = $date->dayOfWeek;
@@ -30,7 +26,11 @@ class AvailabilityController extends Controller
         if ($schedules->isEmpty()) {
             return response()->json([
                 'message' => 'El doctor no tiene horario disponible para ese día.',
-                'slots'   => [],
+                'data' => new AvailabilityResource([
+                    'doctor' => User::find($doctorId, ['id', 'name', 'email']),
+                    'date' => $date->toDateString(),
+                    'slots' => [],
+                ]),
             ]);
         }
 
@@ -67,9 +67,11 @@ class AvailabilityController extends Controller
 
         return response()->json([
             'message' => 'Disponibilidad obtenida correctamente.',
-            'doctor'  => User::find($doctorId, ['id', 'name', 'email']),
-            'date'    => $date->toDateString(),
-            'slots'   => $availableSlots,
+            'data' => new AvailabilityResource([
+                'doctor' => User::find($doctorId, ['id', 'name', 'email']),
+                'date' => $date->toDateString(),
+                'slots' => $availableSlots,
+            ]),
         ]);
     }
 }
