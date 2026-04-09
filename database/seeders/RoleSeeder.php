@@ -59,13 +59,7 @@ class RoleSeeder extends Seeder
             ]
         );
         $testPaciente->assignRole($paciente);
-        Patient::updateOrCreate(
-            ['user_id' => $testPaciente->id],
-            [
-                'name' => $testPaciente->name,
-                'email' => $testPaciente->email,
-            ]
-        );
+        $this->syncPatientProfile($testPaciente);
 
         // Doctor users
         $doctorNames = [
@@ -90,6 +84,8 @@ class RoleSeeder extends Seeder
         $pacienteNames = [
             ['name' => 'Ana Pérez',     'email' => 'ana.perez@clinica.com'],
             ['name' => 'Luis Ramírez',  'email' => 'luis.ramirez@clinica.com'],
+            ['name' => 'Agente Citas Ágiles', 'email' => 'agentecitasagiles@gmail.com'],
+            ['name' => 'Diego Francisco Arévalo', 'email' => 'diegofranciscoarevalo503@gmail.com'],
         ];
 
         foreach ($pacienteNames as $data) {
@@ -102,13 +98,29 @@ class RoleSeeder extends Seeder
                 ]
             );
             $user->assignRole($paciente);
+            $this->syncPatientProfile($user);
+        }
+    }
+
+    private function syncPatientProfile(User $user): void
+    {
+        $attributes = [
+            'name' => $user->name,
+            'email' => $user->email,
+        ];
+
+        if (Patient::usesUserLinkColumn()) {
             Patient::updateOrCreate(
                 ['user_id' => $user->id],
-                [
-                    'name' => $user->name,
-                    'email' => $user->email,
-                ]
+                $attributes,
             );
+
+            return;
         }
+
+        Patient::updateOrCreate(
+            ['email' => $user->email],
+            $attributes,
+        );
     }
 }
