@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AppointmentService;
 use App\Services\PaymentService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,7 +23,7 @@ use Throwable;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, PaymentService $paymentService): View
     {
         $user = $request->user()->loadMissing(['roles', 'patient']);
         $patient = $user->patient;
@@ -64,6 +65,18 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        $dashboardPayment = session('dashboard_payment');
+        $stripeCheckout = null;
+
+        if ($user->hasRole('paciente') && $payments->isNotEmpty()) {
+            $stripeCheckout = $this->resolveStripeCheckout(
+                $request,
+                $payments,
+                is_array($dashboardPayment) ? $dashboardPayment : [],
+                $paymentService,
+            );
+        }
+
         return view('dashboard', [
             'user' => $user,
             'patient' => $patient,
@@ -72,7 +85,9 @@ class DashboardController extends Controller
             'doctors' => $doctors,
             'doctorAppointments' => $doctorAppointments,
             'appointmentPrice' => 5000,
-            'dashboardPayment' => session('dashboard_payment'),
+            'dashboardPayment' => $dashboardPayment,
+            'stripeCheckout' => $stripeCheckout,
+            'stripePublishableKey' => (string) config('cashier.key'),
             'adminStats' => [
                 'usuarios' => User::query()->count(),
                 'pacientes' => Patient::query()->count(),
@@ -187,6 +202,71 @@ class DashboardController extends Controller
             ]);
     }
 
+    public function finalizePayment(
+        Request $request,
+        Payment $payment,
+        PaymentService $paymentService
+    ): JsonResponse {
+        $user = $request->user();
+        $payment->loadMissing(['patient', 'appointment.doctor']);
+
+        abort_unless($user->hasRole('paciente'), 403);
+        abort_unless($payment->patient?->belongsToUser($user) ?? false, 403);
+
+        $payload = $request->validate([
+            'payment_intent_id' => 'required|string',
+        ]);
+
+        if ($payment->stripe_payment_intent_id !== $payload['payment_intent_id']) {
+            return response()->json([
+                'message' => 'El intento de pago no coincide con el pago seleccionado.',
+            ], 422);
+        }
+
+        if ($payment->status === 'paid') {
+            return response()->json([
+                'message' => 'El pago ya estaba confirmado.',
+                'payment' => $payment,
+            ]);
+        }
+
+        try {
+            $intent = $paymentService->retrieveIntent($payment->stripe_payment_intent_id);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'No fue posible verificar el estado del pago con Stripe.',
+            ], 502);
+        }
+
+        if ($intent->status === 'succeeded') {
+            $payment = $paymentService->markAsPaid($payment);
+
+            return response()->json([
+                'message' => 'Pago confirmado correctamente.',
+                'payment' => $payment,
+                'redirect_url' => route('dashboard', ['focus' => 'payments']),
+            ]);
+        }
+
+        if (in_array($intent->status, ['requires_payment_method', 'canceled'], true)) {
+            $payment = $paymentService->markAsFailed($payment);
+
+            return response()->json([
+                'message' => 'Stripe dejó el pago en estado '.$intent->status.'.',
+                'payment' => $payment,
+                'stripe_status' => $intent->status,
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Stripe todavía no cerró este pago.',
+            'payment' => $payment->fresh(['patient', 'appointment.doctor']),
+            'stripe_status' => $intent->status,
+        ], 409);
+    }
+
     public function simulatePayment(
         Request $request,
         Payment $payment,
@@ -254,5 +334,66 @@ class DashboardController extends Controller
         }
 
         return Patient::query()->create($payload);
+    }
+
+    private function resolveStripeCheckout(
+        Request $request,
+        $payments,
+        array $dashboardPayment,
+        PaymentService $paymentService
+    ): ?array {
+        $selectedPayment = null;
+        $requestedPaymentId = $request->integer('payment');
+        $flashedPaymentId = isset($dashboardPayment['payment_id']) ? (int) $dashboardPayment['payment_id'] : null;
+
+        if ($requestedPaymentId > 0) {
+            $selectedPayment = $payments->firstWhere('id', $requestedPaymentId);
+        }
+
+        if (! $selectedPayment && $flashedPaymentId) {
+            $selectedPayment = $payments->firstWhere('id', $flashedPaymentId);
+        }
+
+        if (! $selectedPayment) {
+            $selectedPayment = $payments->first(fn (Payment $payment) => $payment->status !== 'paid');
+        }
+
+        if (! $selectedPayment instanceof Payment) {
+            return null;
+        }
+
+        $clientSecret = null;
+        $error = null;
+
+        if (
+            $flashedPaymentId === (int) $selectedPayment->id
+            && filled($dashboardPayment['client_secret'] ?? null)
+        ) {
+            $clientSecret = (string) $dashboardPayment['client_secret'];
+        } elseif (
+            filled($selectedPayment->stripe_payment_intent_id)
+            && filled(config('cashier.secret'))
+        ) {
+            try {
+                $intent = $paymentService->retrieveIntent($selectedPayment->stripe_payment_intent_id);
+                $clientSecret = (string) ($intent->client_secret ?? '');
+            } catch (Throwable $exception) {
+                report($exception);
+                $error = 'No fue posible recuperar el formulario de Stripe para este pago.';
+            }
+        } elseif ($selectedPayment->status !== 'paid') {
+            $error = 'Configura las llaves de Stripe para habilitar el pago sandbox.';
+        }
+
+        return [
+            'payment' => $selectedPayment,
+            'payment_id' => $selectedPayment->id,
+            'amount' => $selectedPayment->amount,
+            'currency' => $selectedPayment->currency,
+            'status' => $selectedPayment->status,
+            'client_secret' => $clientSecret,
+            'stripe_payment_intent_id' => $selectedPayment->stripe_payment_intent_id,
+            'error' => $error,
+        ];
     }
 }

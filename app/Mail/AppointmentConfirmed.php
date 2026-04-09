@@ -20,7 +20,7 @@ class AppointmentConfirmed extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Cita confirmada'
+            subject: 'Cita registrada'
         );
     }
 

@@ -23,8 +23,8 @@ class PaymentController extends Controller
     ): JsonResponse
     {
         $appointment = Appointment::findOrFail($request->appointment_id);
-        $amount = $request->integer('amount');
-        $currency = strtolower((string) $request->input('currency', 'usd'));
+        $amount = $paymentService->calculateAmount($appointment);
+        $currency = 'usd';
         $intent = $paymentService->createIntent($appointment, $amount, $currency);
 
         $payment = Payment::updateOrCreate(
@@ -57,12 +57,11 @@ class PaymentController extends Controller
             return response()->json(['message' => 'El pago aún no ha sido confirmado por Stripe.'], 422);
         }
 
-        $payment->update(['status' => 'paid']);
-        $payment->appointment->update(['status' => 'completed']);
+        $payment = $paymentService->markAsPaid($payment);
 
         return response()->json([
             'message' => 'Pago confirmado correctamente.',
-            'payment' => new PaymentResource($payment->fresh()),
+            'payment' => new PaymentResource($payment),
         ]);
     }
 

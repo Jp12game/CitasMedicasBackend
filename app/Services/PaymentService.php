@@ -71,11 +71,16 @@ class PaymentService
 
     public function markAsPaid(Payment $payment): Payment
     {
-        $payment->update(['status' => 'paid']);
+        $wasPaid = $payment->status === 'paid';
+
+        if (! $wasPaid) {
+            $payment->update(['status' => 'paid']);
+        }
+
         $payment->appointment?->update(['status' => 'completed']);
         $payment = $payment->fresh(['patient', 'appointment.doctor']);
 
-        if ($payment->patient?->email) {
+        if (! $wasPaid && $payment->patient?->email) {
             Mail::to($payment->patient->email)->send(new PaymentSuccessful($payment));
         }
 
@@ -84,10 +89,15 @@ class PaymentService
 
     public function markAsFailed(Payment $payment): Payment
     {
-        $payment->update(['status' => 'failed']);
+        $wasFailed = $payment->status === 'failed';
+
+        if (! $wasFailed) {
+            $payment->update(['status' => 'failed']);
+        }
+
         $payment = $payment->fresh(['patient', 'appointment.doctor']);
 
-        if ($payment->patient?->email) {
+        if (! $wasFailed && $payment->patient?->email) {
             Mail::to($payment->patient->email)->send(new PaymentFailed($payment));
         }
 

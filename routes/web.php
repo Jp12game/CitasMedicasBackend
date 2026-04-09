@@ -11,6 +11,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('dashboard.patient-profile.update');
     Route::post('dashboard/appointments', [DashboardController::class, 'storeAppointment'])
         ->name('dashboard.appointments.store');
+    Route::post('dashboard/payments/{payment}/finalize', [DashboardController::class, 'finalizePayment'])
+        ->name('dashboard.payments.finalize');
     Route::post('dashboard/payments/{payment}/simulate', [DashboardController::class, 'simulatePayment'])
         ->name('dashboard.payments.simulate');
 });

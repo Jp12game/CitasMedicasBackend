@@ -1,6 +1,7 @@
 @php
     $focus = request('focus');
     $dashboardPayment = is_array($dashboardPayment ?? null) ? $dashboardPayment : [];
+    $stripeCheckout = is_array($stripeCheckout ?? null) ? $stripeCheckout : [];
     $dayNames = [
         0 => 'Domingo',
         1 => 'Lunes',
@@ -225,10 +226,19 @@
             cursor: pointer;
         }
 
+        .clinic-button:disabled {
+            opacity: 0.7;
+            cursor: wait;
+        }
+
         .clinic-button.secondary {
             background: rgba(36, 27, 20, 0.08);
             color: #24160f;
             border: 1px solid rgba(51, 38, 28, 0.1);
+        }
+
+        .clinic-button.linkish {
+            text-decoration: none;
         }
 
         .clinic-inline-actions {
@@ -279,6 +289,59 @@
             border-radius: 1.1rem;
             border: 1px solid rgba(51, 38, 28, 0.08);
             background: rgba(255, 255, 255, 0.62);
+        }
+
+        .clinic-stripe-shell {
+            display: grid;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 1.35rem;
+            border: 1px solid rgba(51, 38, 28, 0.08);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(251, 243, 232, 0.95));
+        }
+
+        .clinic-stripe-element {
+            border: 1px solid rgba(61, 47, 34, 0.16);
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem;
+            min-height: 3.4rem;
+        }
+
+        .clinic-stripe-help {
+            display: grid;
+            gap: 0.35rem;
+            font-size: 0.92rem;
+        }
+
+        .clinic-stripe-help strong,
+        .clinic-payment-message strong {
+            color: #1d130c;
+        }
+
+        .clinic-payment-message {
+            min-height: 1.5rem;
+            font-size: 0.92rem;
+        }
+
+        .clinic-payment-message[data-state="error"] {
+            color: #8c2f17;
+        }
+
+        .clinic-payment-message[data-state="success"] {
+            color: #236242;
+        }
+
+        .clinic-payment-message[data-state="working"] {
+            color: #8f4417;
+        }
+
+        .clinic-payment-note {
+            padding: 0.85rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(201, 101, 43, 0.18);
+            background: rgba(201, 101, 43, 0.08);
         }
 
         .clinic-doctor-grid {
@@ -603,7 +666,7 @@
                         <div>
                             <h2 class="text-3xl">Muro de pago</h2>
                             <p class="clinic-muted">
-                                Cada cita genera un PaymentIntent sandbox. Desde aquí puedes simular un pago exitoso o fallido.
+                                Cada cita genera un PaymentIntent sandbox de Stripe por {{ $money($appointmentPrice) }}.
                             </p>
                         </div>
                     </div>
@@ -611,6 +674,78 @@
                     @if ($payments->isEmpty())
                         <p class="clinic-muted">Todavía no tienes pagos asociados. Reserva una cita para abrir el muro.</p>
                     @else
+                        @if ($stripeCheckout)
+                            <div class="clinic-stripe-shell">
+                                <div class="clinic-inline-actions" style="justify-content: space-between;">
+                                    <div>
+                                        <strong style="color: #1d130c;">Checkout de prueba con Stripe</strong>
+                                        <p class="clinic-muted">
+                                            Pago seleccionado:
+                                            {{ $money($stripeCheckout['amount'] ?? 0) }}
+                                            ·
+                                            {{ strtoupper($stripeCheckout['currency'] ?? 'usd') }}
+                                        </p>
+                                    </div>
+                                    <div class="clinic-inline-actions">
+                                        <span class="clinic-badge {{ $stripeCheckout['status'] ?? 'pending' }}">
+                                            {{ $stripeCheckout['status'] ?? 'pending' }}
+                                        </span>
+                                        @if (($dashboardPayment['payment_id'] ?? null) === ($stripeCheckout['payment_id'] ?? null))
+                                            <span class="clinic-badge pending">último intento</span>
+                                        @endif
+                                    </div>
+                                </div>
+
+                                <div class="clinic-stripe-help">
+                                    <span><strong>Tarjeta exitosa:</strong> `4242 4242 4242 4242`</span>
+                                    <span><strong>Tarjeta rechazada:</strong> `4000 0000 0000 0002`</span>
+                                    <span><strong>Fecha / CVC:</strong> cualquier fecha futura y cualquier CVC de 3 dígitos.</span>
+                                </div>
+
+                                @if (($stripeCheckout['status'] ?? null) === 'paid')
+                                    <div class="clinic-payment-note">
+                                        Este pago ya fue confirmado. Puedes revisar el histórico debajo.
+                                    </div>
+                                @elseif (blank($stripePublishableKey ?? ''))
+                                    <div class="clinic-payment-note">
+                                        Falta `STRIPE_KEY` en el entorno. El backend ya crea PaymentIntents, pero el formulario del navegador no puede inicializar Stripe.js sin la llave pública.
+                                    </div>
+                                @elseif (blank($stripeCheckout['client_secret'] ?? null))
+                                    <div class="clinic-payment-note">
+                                        {{ $stripeCheckout['error'] ?? 'No fue posible recuperar el client secret de Stripe para este pago.' }}
+                                    </div>
+                                @else
+                                    <form
+                                        id="stripe-payment-form"
+                                        class="clinic-form"
+                                        data-client-secret="{{ $stripeCheckout['client_secret'] }}"
+                                        data-payment-intent-id="{{ $stripeCheckout['stripe_payment_intent_id'] }}"
+                                        data-publishable-key="{{ $stripePublishableKey }}"
+                                        data-finalize-url="{{ route('dashboard.payments.finalize', $stripeCheckout['payment_id']) }}"
+                                        data-return-url="{{ route('dashboard', ['focus' => 'payments']) }}"
+                                        data-customer-email="{{ $patient?->email ?? $user->email }}"
+                                        data-csrf-token="{{ csrf_token() }}"
+                                    >
+                                        <label class="clinic-field">
+                                            <span>Tarjeta de prueba</span>
+                                            <div id="stripe-card-element" class="clinic-stripe-element"></div>
+                                        </label>
+
+                                        <p id="stripe-payment-message" class="clinic-payment-message" aria-live="polite"></p>
+
+                                        <div class="clinic-inline-actions">
+                                            <button id="stripe-submit-button" class="clinic-button" type="submit">
+                                                Pagar {{ $money($stripeCheckout['amount'] ?? 0) }} con Stripe
+                                            </button>
+                                            <span class="clinic-muted">
+                                                El frontend confirma el pago con Stripe test mode y luego el backend actualiza la cita y dispara el correo.
+                                            </span>
+                                        </div>
+                                    </form>
+                                @endif
+                            </div>
+                        @endif
+
                         <div class="clinic-list">
                             @foreach ($payments as $payment)
                                 <article class="clinic-list-item">
@@ -636,36 +771,18 @@
                                         <strong style="color: #1d130c;">{{ $payment->stripe_payment_intent_id ?? 'pendiente de generar' }}</strong>
                                     </p>
 
-                                    @if (($dashboardPayment['payment_id'] ?? null) === $payment->id)
-                                        <div class="clinic-card" style="margin-top: 0.35rem;">
-                                            <span class="clinic-badge">Último intento creado</span>
-                                            <p class="clinic-muted" style="margin-top: 0.55rem;">
-                                                `client_secret`: {{ $dashboardPayment['client_secret'] ?? 'no disponible' }}
-                                            </p>
-                                        </div>
-                                    @endif
-
                                     @if ($payment->status !== 'paid')
-                                        <form class="clinic-form" method="POST" action="{{ route('dashboard.payments.simulate', $payment) }}">
-                                            @csrf
-
-                                            <div class="clinic-form-grid">
-                                                <label class="clinic-field">
-                                                    <span>Escenario de prueba</span>
-                                                    <select name="payment_method">
-                                                        <option value="pm_card_visa">Pago exitoso · `pm_card_visa`</option>
-                                                        <option value="pm_card_chargeDeclined">Tarjeta rechazada · `pm_card_chargeDeclined`</option>
-                                                    </select>
-                                                </label>
-                                            </div>
-
-                                            <div class="clinic-inline-actions">
-                                                <button class="clinic-button" type="submit">Simular pago</button>
-                                                <span class="clinic-muted">
-                                                    Usa este botón en local y testing para mover el pago sin frontend Stripe completo.
-                                                </span>
-                                            </div>
-                                        </form>
+                                        <div class="clinic-inline-actions">
+                                            <a
+                                                class="clinic-button secondary linkish"
+                                                href="{{ route('dashboard', ['focus' => 'payments', 'payment' => $payment->id]) }}"
+                                            >
+                                                Pagar esta cita
+                                            </a>
+                                            @if (($stripeCheckout['payment_id'] ?? null) === $payment->id)
+                                                <span class="clinic-muted">Checkout activo arriba.</span>
+                                            @endif
+                                        </div>
                                     @endif
                                 </article>
                             @endforeach
@@ -712,6 +829,10 @@
         </div>
     </div>
 
+    @if (! blank($stripePublishableKey ?? '') && ! blank($stripeCheckout['client_secret'] ?? null) && ($stripeCheckout['status'] ?? null) !== 'paid')
+        <script src="https://js.stripe.com/v3/"></script>
+    @endif
+
     <script>
         const doctorField = document.getElementById('doctor_id');
         const startField = document.getElementById('date_time_begin');
@@ -736,5 +857,134 @@
 
         doctorField?.addEventListener('change', syncAppointmentEnd);
         startField?.addEventListener('change', syncAppointmentEnd);
+
+        const stripeForm = document.getElementById('stripe-payment-form');
+        const stripeMessage = document.getElementById('stripe-payment-message');
+        const stripeSubmitButton = document.getElementById('stripe-submit-button');
+
+        const setStripeMessage = (message, state = '') => {
+            if (!stripeMessage) {
+                return;
+            }
+
+            stripeMessage.textContent = message || '';
+
+            if (state) {
+                stripeMessage.dataset.state = state;
+                return;
+            }
+
+            delete stripeMessage.dataset.state;
+        };
+
+        const finalizeStripePayment = async (paymentIntentId) => {
+            if (!stripeForm || !paymentIntentId) {
+                return null;
+            }
+
+            const response = await fetch(stripeForm.dataset.finalizeUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': stripeForm.dataset.csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({
+                    payment_intent_id: paymentIntentId,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({
+                message: 'No fue posible leer la respuesta del backend.',
+            }));
+
+            return { response, data };
+        };
+
+        if (stripeForm && window.Stripe) {
+            const stripe = window.Stripe(stripeForm.dataset.publishableKey);
+            const elements = stripe.elements();
+            const card = elements.create('card', {
+                hidePostalCode: true,
+                style: {
+                    base: {
+                        color: '#24160f',
+                        fontFamily: 'system-ui, sans-serif',
+                        fontSize: '16px',
+                        '::placeholder': {
+                            color: '#8f8175',
+                        },
+                    },
+                },
+            });
+
+            card.mount('#stripe-card-element');
+
+            card.on('change', (event) => {
+                if (event.error) {
+                    setStripeMessage(event.error.message, 'error');
+                    return;
+                }
+
+                if (!event.complete) {
+                    setStripeMessage('');
+                }
+            });
+
+            stripeForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                stripeSubmitButton?.setAttribute('disabled', 'disabled');
+                setStripeMessage('Confirmando el pago con Stripe...', 'working');
+
+                const result = await stripe.confirmCardPayment(stripeForm.dataset.clientSecret, {
+                    payment_method: {
+                        card,
+                        billing_details: {
+                            email: stripeForm.dataset.customerEmail,
+                        },
+                    },
+                });
+
+                if (result.error) {
+                    const failedIntentId =
+                        result.error.payment_intent?.id || stripeForm.dataset.paymentIntentId;
+
+                    if (failedIntentId) {
+                        const finalized = await finalizeStripePayment(failedIntentId);
+
+                        if (finalized?.data?.message) {
+                            setStripeMessage(finalized.data.message, 'error');
+                        } else {
+                            setStripeMessage(result.error.message || 'Stripe rechazó el pago de prueba.', 'error');
+                        }
+                    } else {
+                        setStripeMessage(result.error.message || 'Stripe rechazó el pago de prueba.', 'error');
+                    }
+
+                    stripeSubmitButton?.removeAttribute('disabled');
+                    return;
+                }
+
+                const paymentIntentId = result.paymentIntent?.id || stripeForm.dataset.paymentIntentId;
+                const finalized = await finalizeStripePayment(paymentIntentId);
+
+                if (!finalized) {
+                    setStripeMessage('El frontend confirmó el pago, pero el backend no respondió.', 'error');
+                    stripeSubmitButton?.removeAttribute('disabled');
+                    return;
+                }
+
+                if (finalized.response.ok) {
+                    setStripeMessage(finalized.data.message || 'Pago confirmado correctamente.', 'success');
+                    window.location.href = finalized.data.redirect_url || stripeForm.dataset.returnUrl;
+                    return;
+                }
+
+                setStripeMessage(finalized.data.message || 'No fue posible cerrar el pago en el sistema.', 'error');
+                stripeSubmitButton?.removeAttribute('disabled');
+            });
+        }
     </script>
 </x-layouts::app>

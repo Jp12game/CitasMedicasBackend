@@ -18,7 +18,7 @@ test('creating a payment intent returns a client secret', function () {
         'status' => 'scheduled',
     ]);
 
-    $paymentService = Mockery::mock(PaymentService::class);
+    $paymentService = Mockery::mock(PaymentService::class)->makePartial();
     $paymentService->shouldReceive('createIntent')
         ->once()
         ->andReturn((object) [
@@ -62,7 +62,7 @@ test('patients can create payment intents through their linked patient even if t
         'status' => 'scheduled',
     ]);
 
-    $paymentService = Mockery::mock(PaymentService::class);
+    $paymentService = Mockery::mock(PaymentService::class)->makePartial();
     $paymentService->shouldReceive('createIntent')
         ->once()
         ->andReturn((object) [
@@ -126,7 +126,7 @@ test('confirming a payment marks it as paid', function () {
         'currency' => 'usd',
     ]);
 
-    $paymentService = Mockery::mock(PaymentService::class);
+    $paymentService = Mockery::mock(PaymentService::class)->makePartial();
     $paymentService->shouldReceive('retrieveIntent')
         ->once()
         ->with('pi_confirm_123')
