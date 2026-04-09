@@ -6,14 +6,11 @@ use App\Http\Requests\ConfirmPaymentRequest;
 use App\Http\Requests\SimulatePaymentRequest;
 use App\Http\Requests\StorePaymentIntentRequest;
 use App\Http\Resources\PaymentResource;
-use App\Mail\PaymentFailed;
-use App\Mail\PaymentSuccessful;
 use App\Models\Appointment;
 use App\Models\Payment;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 use Stripe\Exception\SignatureVerificationException;
 use Stripe\Exception\UnexpectedValueException;
@@ -96,7 +93,7 @@ class PaymentController extends Controller
             ], 422);
         }
 
-        $payment = $this->markPaymentAsPaid($payment);
+        $payment = $paymentService->markAsPaid($payment);
 
         return response()->json([
             'message' => 'Pago simulado correctamente.',
@@ -132,38 +129,13 @@ class PaymentController extends Controller
         }
 
         if ($type === 'payment_intent.succeeded') {
-            $this->markPaymentAsPaid($payment);
+            $paymentService->markAsPaid($payment);
         }
 
         if ($type === 'payment_intent.payment_failed') {
-            $this->markPaymentAsFailed($payment);
+            $paymentService->markAsFailed($payment);
         }
 
         return response()->json(['message' => 'Webhook procesado correctamente.']);
-    }
-
-    protected function markPaymentAsPaid(Payment $payment): Payment
-    {
-        $payment->update(['status' => 'paid']);
-        $payment->appointment?->update(['status' => 'completed']);
-        $payment = $payment->fresh(['patient', 'appointment']);
-
-        if ($payment->patient?->email) {
-            Mail::to($payment->patient->email)->send(new PaymentSuccessful($payment));
-        }
-
-        return $payment;
-    }
-
-    protected function markPaymentAsFailed(Payment $payment): Payment
-    {
-        $payment->update(['status' => 'failed']);
-        $payment = $payment->fresh(['patient', 'appointment']);
-
-        if ($payment->patient?->email) {
-            Mail::to($payment->patient->email)->send(new PaymentFailed($payment));
-        }
-
-        return $payment;
     }
 }

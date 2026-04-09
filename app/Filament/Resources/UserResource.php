@@ -85,6 +85,10 @@ class UserResource extends Resource
                     ->label('Roles')
                     ->badge()
                     ->separator(','),
+                Tables\Columns\TextColumn::make('patient.name')
+                    ->label('Perfil paciente')
+                    ->placeholder('Sin perfil')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Creado')
                     ->dateTime()

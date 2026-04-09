@@ -46,6 +46,12 @@ class PatientResource extends Resource
     {
         return $form
             ->schema([
+                Forms\Components\Select::make('user_id')
+                    ->label('Cuenta de acceso')
+                    ->relationship('user', 'email')
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Vincula el expediente del paciente con el usuario que iniciará sesión.'),
                 Forms\Components\TextInput::make('name')
                     ->label('Nombre')
                     ->required()
@@ -84,6 +90,10 @@ class PatientResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('email')
                     ->label('Correo')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('user.email')
+                    ->label('Usuario vinculado')
+                    ->placeholder('Sin vincular')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('phone')
                     ->label('Teléfono'),

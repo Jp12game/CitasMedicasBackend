@@ -172,7 +172,7 @@ test('patients can simulate a successful payment for their own payment intent', 
         'currency' => 'usd',
     ]);
 
-    $paymentService = Mockery::mock(PaymentService::class);
+    $paymentService = Mockery::mock(PaymentService::class)->makePartial();
     $paymentService->shouldReceive('confirmIntent')
         ->once()
         ->with('pi_simulated_123', 'pm_card_visa')

@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\Payment;
+use App\Mail\PaymentFailed;
+use App\Mail\PaymentSuccessful;
+use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 use Stripe\Event;
 use Stripe\StripeClient;
@@ -63,6 +67,31 @@ class PaymentService
             $secret,
             (int) config('cashier.webhook.tolerance', Webhook::DEFAULT_TOLERANCE),
         );
+    }
+
+    public function markAsPaid(Payment $payment): Payment
+    {
+        $payment->update(['status' => 'paid']);
+        $payment->appointment?->update(['status' => 'completed']);
+        $payment = $payment->fresh(['patient', 'appointment.doctor']);
+
+        if ($payment->patient?->email) {
+            Mail::to($payment->patient->email)->send(new PaymentSuccessful($payment));
+        }
+
+        return $payment;
+    }
+
+    public function markAsFailed(Payment $payment): Payment
+    {
+        $payment->update(['status' => 'failed']);
+        $payment = $payment->fresh(['patient', 'appointment.doctor']);
+
+        if ($payment->patient?->email) {
+            Mail::to($payment->patient->email)->send(new PaymentFailed($payment));
+        }
+
+        return $payment;
     }
 
     protected function stripeClient(): StripeClient
